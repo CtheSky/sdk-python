@@ -157,6 +157,10 @@ class AsyncClient:
         req = exchange_accounts_rpc_pb.SubaccountOrderSummaryRequest(subaccount_id=subaccount_id, order_direction=order_direction, market_id=market_id)
         return await self.stubExchangeAccount.SubaccountOrderSummary(req)
 
+    async def get_order_states(self, spot_order_hashes: list = '', derivative_order_hashes: list = ''):
+        req = exchange_accounts_rpc_pb.OrderStatesRequest(spot_order_hashes=spot_order_hashes, derivative_order_hashes=derivative_order_hashes)
+        return await self.stubExchangeAccount.OrderStates(req)
+
     #OracleRPC
     async def stream_oracle_prices(self, base_symbol: str, quote_symbol: str, oracle_type: str):
         req = oracle_rpc_pb.StreamPricesRequest(base_symbol=base_symbol, quote_symbol=quote_symbol, oracle_type=oracle_type)

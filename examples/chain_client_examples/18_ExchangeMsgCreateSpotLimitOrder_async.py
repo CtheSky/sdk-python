@@ -34,7 +34,7 @@ async def main() -> None:
         fee_recipient=fee_recipient,
         price=7.523,
         quantity=0.01,
-        isBuy=True
+        is_buy=True
     )
 
     # build sim tx

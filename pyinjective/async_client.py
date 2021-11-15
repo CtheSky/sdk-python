@@ -1,3 +1,4 @@
+import os
 import grpc
 
 from typing import List, Optional
@@ -35,6 +36,26 @@ from .proto.exchange import (
 
 from .constant import Network
 
+TIMEOUT = int(os.environ.get('INJ_GRPC_TIMEOUT') or 8)
+
+
+class UnaryUnaryWithTimeout(grpc.aio.UnaryUnaryClientInterceptor):
+    """
+    An Interceptor to add timeout option on unary unary calls
+
+    it reads environment variables INJ_GRPC_TIMEOUT in seconds
+    """
+
+    async def intercept_unary_unary(self, continuation, client_call_details, request):
+        new_details = grpc.aio.ClientCallDetails(
+            client_call_details.method,
+            TIMEOUT,
+            client_call_details.metadata,
+            client_call_details.credentials,
+            client_call_details.wait_for_ready
+        )
+        return await continuation(new_details, request)
+
 
 class AsyncClient:
     def __init__(
@@ -45,12 +66,16 @@ class AsyncClient:
     ):
         # chain stubs
         self.chain_channel = (
-            grpc.aio.insecure_channel(network.grpc_endpoint)
+            grpc.aio.insecure_channel(
+                network.grpc_endpoint,
+                interceptors=[UnaryUnaryWithTimeout()]
+            )
             if insecure
             else grpc.aio.secure_channel(
                 network.grpc_endpoint,
                 credentials or grpc.ssl_channel_credentials(),
-                )
+                interceptors=[UnaryUnaryWithTimeout()]
+            )
         )
         self.stubCosmosTendermint = tendermint_query_grpc.ServiceStub(self.chain_channel)
         self.stubAuth = auth_query_grpc.QueryStub(self.chain_channel)
@@ -58,12 +83,16 @@ class AsyncClient:
 
         # exchange stubs
         self.exchange_channel = (
-            grpc.aio.insecure_channel(network.grpc_exchange_endpoint)
+            grpc.aio.insecure_channel(
+                network.grpc_exchange_endpoint,
+                interceptors=[UnaryUnaryWithTimeout()]
+            )
             if insecure
             else grpc.secure_channel(
                 network.grpc_endpoint,
                 credentials or grpc.ssl_channel_credentials(),
-                )
+                interceptors=[UnaryUnaryWithTimeout()]
+            )
         )
         self.stubExchangeAccount = exchange_accounts_rpc_grpc.InjectiveAccountsRPCStub(self.exchange_channel)
         self.stubOracle = oracle_rpc_grpc.InjectiveOracleRPCStub(self.exchange_channel)
@@ -135,7 +164,7 @@ class AsyncClient:
     #AccountsRPC
     async def stream_subaccount_balance(self, subaccount_id: str):
         req = exchange_accounts_rpc_pb.StreamSubaccountBalanceRequest(subaccount_id=subaccount_id)
-        return await self.stubExchangeAccount.StreamSubaccountBalance(req)
+        return self.stubExchangeAccount.StreamSubaccountBalance(req)
 
     async def get_subaccount_balance(self, subaccount_id: str, denom: str):
         req = exchange_accounts_rpc_pb.SubaccountBalanceRequest(subaccount_id=subaccount_id, denom=denom)
@@ -157,14 +186,10 @@ class AsyncClient:
         req = exchange_accounts_rpc_pb.SubaccountOrderSummaryRequest(subaccount_id=subaccount_id, order_direction=order_direction, market_id=market_id)
         return await self.stubExchangeAccount.SubaccountOrderSummary(req)
 
-    async def get_order_states(self, spot_order_hashes: list = '', derivative_order_hashes: list = ''):
-        req = exchange_accounts_rpc_pb.OrderStatesRequest(spot_order_hashes=spot_order_hashes, derivative_order_hashes=derivative_order_hashes)
-        return await self.stubExchangeAccount.OrderStates(req)
-
     #OracleRPC
     async def stream_oracle_prices(self, base_symbol: str, quote_symbol: str, oracle_type: str):
         req = oracle_rpc_pb.StreamPricesRequest(base_symbol=base_symbol, quote_symbol=quote_symbol, oracle_type=oracle_type)
-        return await self.stubOracle.StreamPrices(req)
+        return self.stubOracle.StreamPrices(req)
 
     async def get_oracle_prices(self, base_symbol: str, quote_symbol: str, oracle_type: str, oracle_scale_factor: str):
         req = oracle_rpc_pb.PriceRequest(base_symbol=base_symbol, quote_symbol=quote_symbol, oracle_type=oracle_type, oracle_scale_factor=oracle_scale_factor)
@@ -196,7 +221,7 @@ class AsyncClient:
 
     async def stream_spot_markets(self):
         req = spot_exchange_rpc_pb.StreamMarketsRequest()
-        return await self.stubSpotExchange.StreamMarkets(req)
+        return self.stubSpotExchange.StreamMarkets(req)
 
     async def get_spot_orderbook(self, market_id: str):
         req = spot_exchange_rpc_pb.OrderbookRequest(market_id=market_id)
@@ -212,15 +237,15 @@ class AsyncClient:
 
     async def stream_spot_orderbook(self, market_id: str):
         req = spot_exchange_rpc_pb.StreamOrderbookRequest(market_id=market_id)
-        return await self.stubSpotExchange.StreamOrderbook(req)
+        return self.stubSpotExchange.StreamOrderbook(req)
 
     async def stream_spot_orders(self, market_id: str, order_side: str = '', subaccount_id: str =''):
         req = spot_exchange_rpc_pb.StreamOrdersRequest(market_id=market_id, order_side=order_side, subaccount_id=subaccount_id)
-        return await self.stubSpotExchange.StreamOrders(req)
+        return self.stubSpotExchange.StreamOrders(req)
 
     async def stream_spot_trades(self, market_id: str, execution_side: str = '', direction: str = '', subaccount_id: str = ''):
         req = spot_exchange_rpc_pb.StreamTradesRequest(market_id=market_id, execution_side=execution_side, direction=direction, subaccount_id=subaccount_id)
-        return await self.stubSpotExchange.StreamTrades(req)
+        return self.stubSpotExchange.StreamTrades(req)
 
     async def get_spot_subaccount_orders(self, subaccount_id: str, market_id: str =''):
         req = spot_exchange_rpc_pb.SubaccountOrdersListRequest(subaccount_id=subaccount_id, market_id=market_id)
@@ -241,7 +266,7 @@ class AsyncClient:
 
     async def stream_derivative_markets(self):
         req = derivative_exchange_rpc_pb.StreamMarketRequest()
-        return await self.stubDerivativeExchange.StreamMarket(req)
+        return self.stubDerivativeExchange.StreamMarket(req)
 
     async def get_derivative_orderbook(self, market_id: str):
         req = derivative_exchange_rpc_pb.OrderbookRequest(market_id=market_id)
@@ -257,15 +282,15 @@ class AsyncClient:
 
     async def stream_derivative_orderbook(self, market_id: str):
         req = derivative_exchange_rpc_pb.StreamOrderbookRequest(market_id=market_id)
-        return await self.stubDerivativeExchange.StreamOrderbook(req)
+        return self.stubDerivativeExchange.StreamOrderbook(req)
 
     async def stream_derivative_orders(self, market_id: str, order_side: str = '', subaccount_id: str = ''):
         req = derivative_exchange_rpc_pb.StreamOrdersRequest(market_id=market_id, order_side=order_side, subaccount_id=subaccount_id)
-        return await self.stubDerivativeExchange.StreamOrders(req)
+        return self.stubDerivativeExchange.StreamOrders(req)
 
     async def stream_derivative_trades(self, market_id: str, subaccount_id: str = ''):
         req = derivative_exchange_rpc_pb.StreamTradesRequest(market_id=market_id, subaccount_id=subaccount_id)
-        return await self.stubDerivativeExchange.StreamTrades(req)
+        return self.stubDerivativeExchange.StreamTrades(req)
 
     async def get_derivative_positions(self, market_id: str, subaccount_id: str =''):
         req = derivative_exchange_rpc_pb.PositionsRequest(market_id=market_id, subaccount_id=subaccount_id)
@@ -273,7 +298,7 @@ class AsyncClient:
 
     async def stream_derivative_positions(self, market_id: str, subaccount_id: str = ''):
         req = derivative_exchange_rpc_pb.StreamPositionsRequest(market_id=market_id, subaccount_id=subaccount_id)
-        return await self.stubDerivativeExchange.StreamPositions(req)
+        return self.stubDerivativeExchange.StreamPositions(req)
 
     async def get_derivative_liquidable_positions(self, market_id: str = ''):
         req = derivative_exchange_rpc_pb.LiquidablePositionsRequest(market_id=market_id)

@@ -1,4 +1,6 @@
 import os
+import time
+
 import grpc
 
 from typing import List, Optional
@@ -30,8 +32,9 @@ from .proto.exchange import (
     injective_spot_exchange_rpc_pb2 as spot_exchange_rpc_pb,
     injective_spot_exchange_rpc_pb2_grpc as spot_exchange_rpc_grpc,
     injective_derivative_exchange_rpc_pb2 as derivative_exchange_rpc_pb,
-    injective_derivative_exchange_rpc_pb2_grpc as derivative_exchange_rpc_grpc
-
+    injective_derivative_exchange_rpc_pb2_grpc as derivative_exchange_rpc_grpc,
+    injective_meta_rpc_pb2 as exchange_meta_rpc_pb,
+    injective_meta_rpc_pb2_grpc as exchange_meta_rpc_grpc
 )
 
 from .constant import Network
@@ -94,6 +97,8 @@ class AsyncClient:
                 interceptors=[UnaryUnaryWithTimeout()]
             )
         )
+        self.stubMeta = exchange_meta_rpc_grpc.InjectiveMetaRPCStub(self.exchange_channel)
+        self.stubExchangeAccount = exchange_accounts_rpc_grpc.InjectiveAccountsRPCStub(self.exchange_channel)
         self.stubExchangeAccount = exchange_accounts_rpc_grpc.InjectiveAccountsRPCStub(self.exchange_channel)
         self.stubOracle = oracle_rpc_grpc.InjectiveOracleRPCStub(self.exchange_channel)
         self.stubInsurance = insurance_rpc_grpc.InjectiveInsuranceRPCStub(self.exchange_channel)
@@ -135,7 +140,7 @@ class AsyncClient:
                 tx_service.SimulateRequest(tx_bytes=tx_byte)
             ), True)
         except grpc.RpcError as err:
-            return (err, False)
+            return err, False
 
     async def send_tx_sync_mode(self, tx_byte: bytes) -> abci_type.TxResponse:
         result = await self.stubTx.BroadcastTx(
@@ -159,9 +164,50 @@ class AsyncClient:
         latest_block = await self.get_latest_block()
         return latest_block.block.header.chain_id
 
-    # injective exchange client methods
+    # Injective Exchange client methods
+
+    # Meta RPC
+
+    async def ping(self):
+        req = exchange_meta_rpc_pb.PingRequest()
+        return await self.stubMeta.Ping(req)
+
+    async def version(self):
+        req = exchange_meta_rpc_pb.VersionRequest()
+        return await self.stubMeta.Version(req)
+
+    async def info(self):
+        req = exchange_meta_rpc_pb.InfoRequest(
+            timestamp=int(round(time.time() * 1000)),
+        )
+        return await self.stubMeta.Info(req)
+
+    async def stream_keepalive(self):
+        req = exchange_meta_rpc_pb.StreamKeepaliveRequest()
+        return self.stubMeta.StreamKeepalive(req)
+
+    # Meta RPC
+    async def ping(self):
+        req = exchange_meta_rpc_pb.PingRequest()
+        return await self.stubMeta.Ping(req)
+
+    async def version(self):
+        req = exchange_meta_rpc_pb.VersionRequest()
+        return await self.stubMeta.Version(req)
+
+    async def info(self):
+        req = exchange_meta_rpc_pb.InfoRequest(
+            timestamp=int(round(time.time() * 1000)),
+        )
+        return await self.stubMeta.Info(req)
+
+    async def stream_keepalive(self):
+        req = exchange_meta_rpc_pb.StreamKeepaliveRequest()
+        return self.stubMeta.StreamKeepalive(req)
+
 
     #AccountsRPC
+
     async def stream_subaccount_balance(self, subaccount_id: str):
         req = exchange_accounts_rpc_pb.StreamSubaccountBalanceRequest(subaccount_id=subaccount_id)
         return self.stubExchangeAccount.StreamSubaccountBalance(req)
@@ -186,7 +232,8 @@ class AsyncClient:
         req = exchange_accounts_rpc_pb.SubaccountOrderSummaryRequest(subaccount_id=subaccount_id, order_direction=order_direction, market_id=market_id)
         return await self.stubExchangeAccount.SubaccountOrderSummary(req)
 
-    #OracleRPC
+    # OracleRPC
+
     async def stream_oracle_prices(self, base_symbol: str, quote_symbol: str, oracle_type: str):
         req = oracle_rpc_pb.StreamPricesRequest(base_symbol=base_symbol, quote_symbol=quote_symbol, oracle_type=oracle_type)
         return self.stubOracle.StreamPrices(req)
@@ -199,7 +246,7 @@ class AsyncClient:
         req = oracle_rpc_pb.OracleListRequest()
         return await self.stubOracle.OracleList(req)
 
-    #InsuranceRPC
+    # InsuranceRPC
 
     async def get_insurance_funds(self):
         req = insurance_rpc_pb.FundsRequest()
@@ -209,13 +256,13 @@ class AsyncClient:
         req = insurance_rpc_pb.RedemptionsRequest(redeemer=redeemer, redemption_denom=redemption_denom, status=status)
         return await self.stubInsurance.Redemptions(req)
 
-    #SpotRPC
+    # SpotRPC
 
     async def get_spot_market(self, market_id: str):
         req = spot_exchange_rpc_pb.MarketRequest(market_id=market_id)
         return await self.stubSpotExchange.Market(req)
 
-    async def get_spot_markets(self, market_status: str ='', base_denom: str = '', quote_denom: str =''):
+    async def get_spot_markets(self, market_status: str = '', base_denom: str = '', quote_denom: str = ''):
         req = spot_exchange_rpc_pb.MarketsRequest(market_status=market_status, base_denom=base_denom, quote_denom=quote_denom)
         return await self.stubSpotExchange.Markets(req)
 
@@ -236,10 +283,10 @@ class AsyncClient:
         return await self.stubSpotExchange.Trades(req)
 
     async def stream_spot_orderbook(self, market_id: str):
-        req = spot_exchange_rpc_pb.StreamOrderbookRequest(market_id=market_id)
+        req = spot_exchange_rpc_pb.StreamOrderbookRequest(market_ids=[market_id])
         return self.stubSpotExchange.StreamOrderbook(req)
 
-    async def stream_spot_orders(self, market_id: str, order_side: str = '', subaccount_id: str =''):
+    async def stream_spot_orders(self, market_id: str, order_side: str = '', subaccount_id: str = ''):
         req = spot_exchange_rpc_pb.StreamOrdersRequest(market_id=market_id, order_side=order_side, subaccount_id=subaccount_id)
         return self.stubSpotExchange.StreamOrders(req)
 
@@ -247,7 +294,7 @@ class AsyncClient:
         req = spot_exchange_rpc_pb.StreamTradesRequest(market_id=market_id, execution_side=execution_side, direction=direction, subaccount_id=subaccount_id)
         return self.stubSpotExchange.StreamTrades(req)
 
-    async def get_spot_subaccount_orders(self, subaccount_id: str, market_id: str =''):
+    async def get_spot_subaccount_orders(self, subaccount_id: str, market_id: str = ''):
         req = spot_exchange_rpc_pb.SubaccountOrdersListRequest(subaccount_id=subaccount_id, market_id=market_id)
         return await self.stubSpotExchange.SubaccountOrdersList(req)
 
@@ -255,12 +302,13 @@ class AsyncClient:
         req = spot_exchange_rpc_pb.SubaccountTradesListRequest(subaccount_id=subaccount_id, market_id=market_id, execution_type=execution_type, direction=direction)
         return await self.stubSpotExchange.SubaccountTradesList(req)
 
-    #DerivativeRPC
+    # DerivativeRPC
+
     async def get_derivative_market(self, market_id: str):
         req = spot_exchange_rpc_pb.MarketRequest(market_id=market_id)
         return await self.stubDerivativeExchange.Market(req)
 
-    async def get_derivative_markets(self, market_status: str ='', quote_denom: str = ''):
+    async def get_derivative_markets(self, market_status: str = '', quote_denom: str = ''):
         req = derivative_exchange_rpc_pb.MarketsRequest(market_status=market_status, quote_denom=quote_denom)
         return await self.stubDerivativeExchange.Markets(req)
 
@@ -281,7 +329,7 @@ class AsyncClient:
         return await self.stubDerivativeExchange.Trades(req)
 
     async def stream_derivative_orderbook(self, market_id: str):
-        req = derivative_exchange_rpc_pb.StreamOrderbookRequest(market_id=market_id)
+        req = derivative_exchange_rpc_pb.StreamOrderbookRequest(market_ids=[market_id])
         return self.stubDerivativeExchange.StreamOrderbook(req)
 
     async def stream_derivative_orders(self, market_id: str, order_side: str = '', subaccount_id: str = ''):
@@ -292,7 +340,7 @@ class AsyncClient:
         req = derivative_exchange_rpc_pb.StreamTradesRequest(market_id=market_id, subaccount_id=subaccount_id)
         return self.stubDerivativeExchange.StreamTrades(req)
 
-    async def get_derivative_positions(self, market_id: str, subaccount_id: str =''):
+    async def get_derivative_positions(self, market_id: str, subaccount_id: str = ''):
         req = derivative_exchange_rpc_pb.PositionsRequest(market_id=market_id, subaccount_id=subaccount_id)
         return await self.stubDerivativeExchange.Positions(req)
 

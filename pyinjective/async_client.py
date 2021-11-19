@@ -1,3 +1,4 @@
+import os
 import time
 
 import grpc
@@ -38,6 +39,26 @@ from .proto.exchange import (
 
 from .constant import Network
 
+TIMEOUT = int(os.environ.get('INJ_GRPC_TIMEOUT') or 8)
+
+
+class UnaryUnaryWithTimeout(grpc.aio.UnaryUnaryClientInterceptor):
+    """
+    An Interceptor to add timeout option on unary unary calls
+
+    it reads environment variables INJ_GRPC_TIMEOUT in seconds
+    """
+
+    async def intercept_unary_unary(self, continuation, client_call_details, request):
+        new_details = grpc.aio.ClientCallDetails(
+            client_call_details.method,
+            TIMEOUT,
+            client_call_details.metadata,
+            client_call_details.credentials,
+            client_call_details.wait_for_ready
+        )
+        return await continuation(new_details, request)
+
 
 class AsyncClient:
     def __init__(
@@ -48,12 +69,16 @@ class AsyncClient:
     ):
         # chain stubs
         self.chain_channel = (
-            grpc.aio.insecure_channel(network.grpc_endpoint)
+            grpc.aio.insecure_channel(
+                network.grpc_endpoint,
+                interceptors=[UnaryUnaryWithTimeout()]
+            )
             if insecure
             else grpc.aio.secure_channel(
                 network.grpc_endpoint,
                 credentials or grpc.ssl_channel_credentials(),
-                )
+                interceptors=[UnaryUnaryWithTimeout()]
+            )
         )
         self.stubCosmosTendermint = tendermint_query_grpc.ServiceStub(self.chain_channel)
         self.stubAuth = auth_query_grpc.QueryStub(self.chain_channel)
@@ -61,12 +86,16 @@ class AsyncClient:
 
         # exchange stubs
         self.exchange_channel = (
-            grpc.aio.insecure_channel(network.grpc_exchange_endpoint)
+            grpc.aio.insecure_channel(
+                network.grpc_exchange_endpoint,
+                interceptors=[UnaryUnaryWithTimeout()]
+            )
             if insecure
             else grpc.secure_channel(
                 network.grpc_endpoint,
                 credentials or grpc.ssl_channel_credentials(),
-                )
+                interceptors=[UnaryUnaryWithTimeout()]
+            )
         )
         self.stubMeta = exchange_meta_rpc_grpc.InjectiveMetaRPCStub(self.exchange_channel)
         self.stubExchangeAccount = exchange_accounts_rpc_grpc.InjectiveAccountsRPCStub(self.exchange_channel)
@@ -182,6 +211,10 @@ class AsyncClient:
     async def get_subaccount_order_summary(self, subaccount_id: str, order_direction: str = '', market_id: str = ''):
         req = exchange_accounts_rpc_pb.SubaccountOrderSummaryRequest(subaccount_id=subaccount_id, order_direction=order_direction, market_id=market_id)
         return await self.stubExchangeAccount.SubaccountOrderSummary(req)
+
+    async def get_order_states(self, spot_order_hashes: list = '', derivative_order_hashes: list = ''):
+        req = exchange_accounts_rpc_pb.OrderStatesRequest(spot_order_hashes=spot_order_hashes, derivative_order_hashes=derivative_order_hashes)
+        return await self.stubExchangeAccount.OrderStates(req)
 
     # OracleRPC
 

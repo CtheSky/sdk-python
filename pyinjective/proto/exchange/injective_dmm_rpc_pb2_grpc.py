@@ -15,10 +15,15 @@ class InjectiveDmmRPCStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.GetLatestEpoch = channel.unary_unary(
-                '/injective_dmm_rpc.InjectiveDmmRPC/GetLatestEpoch',
-                request_serializer=exchange_dot_injective__dmm__rpc__pb2.GetLatestEpochRequest.SerializeToString,
-                response_deserializer=exchange_dot_injective__dmm__rpc__pb2.GetLatestEpochResponse.FromString,
+        self.GetEpochs = channel.unary_unary(
+                '/injective_dmm_rpc.InjectiveDmmRPC/GetEpochs',
+                request_serializer=exchange_dot_injective__dmm__rpc__pb2.GetEpochsRequest.SerializeToString,
+                response_deserializer=exchange_dot_injective__dmm__rpc__pb2.GetEpochsResponse.FromString,
+                )
+        self.GetEpochSummary = channel.unary_unary(
+                '/injective_dmm_rpc.InjectiveDmmRPC/GetEpochSummary',
+                request_serializer=exchange_dot_injective__dmm__rpc__pb2.GetEpochSummaryRequest.SerializeToString,
+                response_deserializer=exchange_dot_injective__dmm__rpc__pb2.GetEpochSummaryResponse.FromString,
                 )
         self.GetDMMRecords = channel.unary_unary(
                 '/injective_dmm_rpc.InjectiveDmmRPC/GetDMMRecords',
@@ -31,15 +36,22 @@ class InjectiveDmmRPCServicer(object):
     """InjectiveDmmRPC defines gRPC API of DMM Dashboard.
     """
 
-    def GetLatestEpoch(self, request, context):
-        """Get info of the latest epoch
+    def GetEpochs(self, request, context):
+        """Get all passed epochs and the current or next incoming epoch
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetEpochSummary(self, request, context):
+        """Get epoch summary by epoch id
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def GetDMMRecords(self, request, context):
-        """Get epoch result records of one dmm
+        """Get all epoch result records for one dmm
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -48,10 +60,15 @@ class InjectiveDmmRPCServicer(object):
 
 def add_InjectiveDmmRPCServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'GetLatestEpoch': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetLatestEpoch,
-                    request_deserializer=exchange_dot_injective__dmm__rpc__pb2.GetLatestEpochRequest.FromString,
-                    response_serializer=exchange_dot_injective__dmm__rpc__pb2.GetLatestEpochResponse.SerializeToString,
+            'GetEpochs': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetEpochs,
+                    request_deserializer=exchange_dot_injective__dmm__rpc__pb2.GetEpochsRequest.FromString,
+                    response_serializer=exchange_dot_injective__dmm__rpc__pb2.GetEpochsResponse.SerializeToString,
+            ),
+            'GetEpochSummary': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetEpochSummary,
+                    request_deserializer=exchange_dot_injective__dmm__rpc__pb2.GetEpochSummaryRequest.FromString,
+                    response_serializer=exchange_dot_injective__dmm__rpc__pb2.GetEpochSummaryResponse.SerializeToString,
             ),
             'GetDMMRecords': grpc.unary_unary_rpc_method_handler(
                     servicer.GetDMMRecords,
@@ -70,7 +87,7 @@ class InjectiveDmmRPC(object):
     """
 
     @staticmethod
-    def GetLatestEpoch(request,
+    def GetEpochs(request,
             target,
             options=(),
             channel_credentials=None,
@@ -80,9 +97,26 @@ class InjectiveDmmRPC(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/injective_dmm_rpc.InjectiveDmmRPC/GetLatestEpoch',
-            exchange_dot_injective__dmm__rpc__pb2.GetLatestEpochRequest.SerializeToString,
-            exchange_dot_injective__dmm__rpc__pb2.GetLatestEpochResponse.FromString,
+        return grpc.experimental.unary_unary(request, target, '/injective_dmm_rpc.InjectiveDmmRPC/GetEpochs',
+            exchange_dot_injective__dmm__rpc__pb2.GetEpochsRequest.SerializeToString,
+            exchange_dot_injective__dmm__rpc__pb2.GetEpochsResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetEpochSummary(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/injective_dmm_rpc.InjectiveDmmRPC/GetEpochSummary',
+            exchange_dot_injective__dmm__rpc__pb2.GetEpochSummaryRequest.SerializeToString,
+            exchange_dot_injective__dmm__rpc__pb2.GetEpochSummaryResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 

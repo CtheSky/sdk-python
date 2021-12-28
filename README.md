@@ -4,11 +4,11 @@
 
 **Ubuntu**
 ```bash
-sudo apt install python3.X-dev
+sudo apt install python3.X-dev autoconf automake build-essential libffi-dev libtool pkg-config
 ```
 **Fedora**
 ```bash
-sudo dnf install python3-devel
+sudo dnf install python3-devel autoconf automake gcc gcc-c++ libffi-devel libtool make pkgconfig
 ```
 
 **macOS**
@@ -51,7 +51,7 @@ $ python examples/chain_client_examples/1_CosmosBankMsgSend.py
 ```
 Upgrade `pip` to the latest version, if you see these warnings:
   ```
-  WARNING: Value for scheme.platlib does not match. Please report this to <https://github.com/pypa/pip/issues/10151>    
+  WARNING: Value for scheme.platlib does not match. Please report this to <https://github.com/pypa/pip/issues/10151>
   WARNING: Additional context:   user = True   home = None   root = None   prefix = None
   ```
 
@@ -86,6 +86,39 @@ python pyinjective/fetch_metadata.py
 
 
 ### Changelogs
+0.5.5.9
+* add MsgBatchUpdateOrders to the composer
+
+0.5.5.8
+* fix stream_bids in async client
+* add more messages in MsgResponses for simulation
+
+0.5.5.5
+* Refactor LCD endpoints
+* regen ini files
+
+0.5.5.1
+* Add ATOM back to denoms_mainnet.ini
+
+0.5.5
+* Added MsgBid to the Composer and provided an example
+* Refactored the clients and composer with kwargs for optional arguments
+
+0.5.4
+* Added PortfolioRequest, GetTxByHashRequest, AuctionRequest, AuctionsRequest, StreamBidsRequest and provided examples
+* Updated the composer with MsgIncreasePosition and MsgLiquidatePosition
+* Added reduce-only orders to the composer and updated examples
+
+0.5.3
+* add skip, and limit to trade request
+
+0.5.2
+* add sync init_num_seq, changed previous init_num_seq to async_init_num_seq
+* add staging mainnet endpoint, update market metadata
+* protobuf regen
+* response parser improvements
+* fix type hints
+
 0.5.1
 * add AsyncClient
 * add MetaRPC API

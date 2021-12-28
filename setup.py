@@ -17,7 +17,7 @@ URL = "https://github.com/InjectiveLabs/sdk-python"
 EMAIL = "max@injectiveprotocol.com"
 AUTHOR = "Injective Labs"
 REQUIRES_PYTHON = ">=3.7.0"
-VERSION = "0.5.1"
+VERSION = "0.5.5.9"
 
 REQUIRED = [
     "grpcio",
@@ -30,6 +30,7 @@ REQUIRED = [
     "pysha3",
     "protobuf",
     "bip32",
+    "coincurve",
 ]
 
 # The rest you shouldn't have to touch too much :)

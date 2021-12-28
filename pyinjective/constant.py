@@ -31,7 +31,6 @@ class Denom:
 
     @classmethod
     def load_market(cls, network, market_id):
-        config = None
         if network == 'devnet':
             config = devnet_config
         elif network == 'testnet':
@@ -49,7 +48,6 @@ class Denom:
 
     @classmethod
     def load_peggy_denom(cls, network, symbol):
-        config = None
         if network == 'devnet':
             config = devnet_config
         elif network == 'testnet':
@@ -62,12 +60,12 @@ class Denom:
 class Network:
     def __init__(
         self,
-        lcd_endpoint: str = None,
-        grpc_endpoint: str = None,
-        grpc_exchange_endpoint: str = None,
-        chain_id: str = None,
-        fee_denom: str = None,
-        env: str = None
+        lcd_endpoint: str ,
+        grpc_endpoint: str ,
+        grpc_exchange_endpoint: str ,
+        chain_id: str ,
+        fee_denom: str ,
+        env: str
     ):
         self.lcd_endpoint = lcd_endpoint
         self.grpc_endpoint = grpc_endpoint
@@ -88,13 +86,13 @@ class Network:
         )
 
     @classmethod
-    def testnet(cls, node='sentry1'):
+    def testnet(cls, node='sentry0'):
         nodes = ['sentry0', 'sentry1']
         if node not in nodes:
             raise ValueError("Must be one of {}".format(nodes))
 
         return cls(
-            lcd_endpoint='https://testnet.lcd.injective.dev',
+            lcd_endpoint="https://testnet.lcd.injective.dev",
             grpc_endpoint=f"{node}.injective.dev:9900",
             grpc_exchange_endpoint=f"{node}.injective.dev:9910",
             chain_id='injective-888',
@@ -108,13 +106,14 @@ class Network:
             'sentry0',  # us, prod
             'sentry1',  # us, prod
             'sentry2',  # us, staging
-            'sentry3',  # tokyo, prod
+            'sentry3',  # tokyo, prod,
+            'sentry4'
         ]
         if node not in nodes:
             raise ValueError("Must be one of {}".format(nodes))
 
         return cls(
-            lcd_endpoint='https://lcd.injective.network',
+            lcd_endpoint="https://lcd.injective.network",
             grpc_endpoint=f"{node}.injective.network:9900",
             grpc_exchange_endpoint=f"{node}.injective.network:9910",
             chain_id='injective-1',

@@ -5,6 +5,8 @@ from .proto.injective.exchange.v1beta1 import tx_pb2 as injective_exchange_tx_pb
 from .proto.injective.exchange.v1beta1 import exchange_pb2 as injective_exchange_pb
 from .proto.injective.types.v1beta1 import tx_response_pb2 as tx_response_pb
 
+from .proto.injective.auction.v1beta1 import tx_pb2 as injective_auction_tx_pb
+
 from .constant import Denom
 from .utils import *
 
@@ -63,15 +65,21 @@ class Composer:
         fee_recipient: str,
         price: float,
         quantity: float,
-        leverage: float,
-        is_buy: bool
+        is_buy: bool,
+        **kwargs
     ):
         # load denom metadata
         denom = Denom.load_market(self.network, market_id)
         print('Loaded market metadata for', denom.description)
 
+        if kwargs.get("is_reduce_only") is None:
+            margin = derivative_margin_to_backend(price, quantity, kwargs.get("leverage"), denom)
+        elif kwargs.get("is_reduce_only", True):
+            margin = 0
+        else:
+            margin = derivative_margin_to_backend(price, quantity, kwargs.get("leverage"), denom)
+
         # prepare values
-        margin = derivative_margin_to_backend(price, quantity, leverage, denom)
         price = derivative_price_to_backend(price, denom)
         trigger_price = derivative_price_to_backend(0, denom)
         quantity = derivative_quantity_to_backend(quantity, denom)
@@ -198,8 +206,8 @@ class Composer:
         fee_recipient: str,
         price: float,
         quantity: float,
-        leverage: float,
-        is_buy: bool
+        is_buy: bool,
+        **kwargs
     ):
         return injective_exchange_tx_pb.MsgCreateDerivativeLimitOrder(
             sender=sender,
@@ -209,8 +217,9 @@ class Composer:
                 fee_recipient=fee_recipient,
                 price=price,
                 quantity=quantity,
-                leverage=leverage,
-                is_buy=is_buy
+                is_buy=is_buy,
+                leverage=kwargs.get("leverage"),
+                is_reduce_only=kwargs.get("is_reduce_only")
             )
         )
 
@@ -271,6 +280,22 @@ class Composer:
             sender=sender,
             data=data
         )
+        
+    def MsgBatchUpdateOrders(
+        self,
+        sender: str,
+        **kwargs
+    ):
+        return injective_exchange_tx_pb.MsgBatchUpdateOrders(
+            sender=sender,
+            subaccount_id=kwargs.get('subaccount_id'),
+            spot_market_ids_to_cancel_all=kwargs.get('spot_market_ids_to_cancel_all'),
+            derivative_market_ids_to_cancel_all=kwargs.get('derivative_market_ids_to_cancel_all'),
+            spot_orders_to_cancel=kwargs.get('spot_orders_to_cancel'),
+            derivative_orders_to_cancel=kwargs.get('derivative_orders_to_cancel'),
+            spot_orders_to_create=kwargs.get('spot_orders_to_create'),
+            derivative_orders_to_create=kwargs.get('derivative_orders_to_create')
+            )
 
     def MsgLiquidatePosition(
         self,
@@ -335,6 +360,21 @@ class Composer:
             amount=self.Coin(amount=be_amount, denom=peggy_denom)
         )
 
+    def MsgBid(
+        self,
+        sender: str,
+        bid_amount: float,
+        round: float
+    ):
+
+        be_amount = amount_to_backend(bid_amount, 18)
+
+        return injective_auction_tx_pb.MsgBid(
+            sender=sender,
+            round=round,
+            bid_amount=self.Coin(amount=be_amount, denom="inj")
+            )
+
     # data field format: [request-msg-header][raw-byte-msg-response]
     # you need to figure out this magic prefix number to trim request-msg-header off the data
     # this method handles only exchange responses
@@ -342,19 +382,25 @@ class Composer:
     def MsgResponses(data, simulation=False):
         if not simulation:
             data = bytes.fromhex(data)
-
         header_map = {
-            '/injective.exchange.v1beta1.MsgCreateSpotLimitOrder': injective_exchange_tx_pb.MsgCreateSpotLimitOrderResponse,
-            '/injective.exchange.v1beta1.MsgCreateSpotMarketOrder': injective_exchange_tx_pb.MsgCreateSpotMarketOrderResponse,
-            '/injective.exchange.v1beta1.MsgCreateDerivativeLimitOrder': injective_exchange_tx_pb.MsgCreateDerivativeLimitOrderResponse,
-            '/injective.exchange.v1beta1.MsgCreateDerivativeMarketOrder': injective_exchange_tx_pb.MsgCreateDerivativeMarketOrderResponse,
-            '/injective.exchange.v1beta1.MsgBatchCancelSpotOrders': injective_exchange_tx_pb.MsgBatchCancelSpotOrdersResponse,
-            '/injective.exchange.v1beta1.MsgBatchCancelDerivativeOrders': injective_exchange_tx_pb.MsgBatchCancelDerivativeOrdersResponse,
-            '/injective.exchange.v1beta1.MsgBatchCreateSpotLimitOrders': injective_exchange_tx_pb.MsgBatchCreateSpotLimitOrdersResponse,
-            '/injective.exchange.v1beta1.MsgBatchCreateDerivativeLimitOrders': injective_exchange_tx_pb.MsgBatchCreateDerivativeLimitOrdersResponse,
-            '/injective.exchange.v1beta1.MsgWithdraw': injective_exchange_tx_pb.MsgWithdrawResponse,
-            '/injective.exchange.v1beta1.MsgSubaccountTransfer': injective_exchange_tx_pb.MsgSubaccountTransferResponse,
-            '/injective.exchange.v1beta1.MsgIncreasePositionMargin': injective_exchange_tx_pb.MsgIncreasePositionMarginResponse,
+            "/injective.exchange.v1beta1.MsgCreateSpotLimitOrder": injective_exchange_tx_pb.MsgCreateSpotLimitOrderResponse,
+            "/injective.exchange.v1beta1.MsgCreateSpotMarketOrder": injective_exchange_tx_pb.MsgCreateSpotMarketOrderResponse,
+            "/injective.exchange.v1beta1.MsgCreateDerivativeLimitOrder": injective_exchange_tx_pb.MsgCreateDerivativeLimitOrderResponse,
+            "/injective.exchange.v1beta1.MsgCreateDerivativeMarketOrder": injective_exchange_tx_pb.MsgCreateDerivativeMarketOrderResponse,
+            "/injective.exchange.v1beta1.MsgCancelSpotOrder": injective_exchange_tx_pb.MsgCancelSpotOrderResponse,
+            "/injective.exchange.v1beta1.MsgCancelDerivativeOrder": injective_exchange_tx_pb.MsgCancelDerivativeOrderResponse,
+            "/injective.exchange.v1beta1.MsgBatchCancelSpotOrders": injective_exchange_tx_pb.MsgBatchCancelSpotOrdersResponse,
+            "/injective.exchange.v1beta1.MsgBatchCancelDerivativeOrders": injective_exchange_tx_pb.MsgBatchCancelDerivativeOrdersResponse,
+            "/injective.exchange.v1beta1.MsgBatchCreateSpotLimitOrders": injective_exchange_tx_pb.MsgBatchCreateSpotLimitOrdersResponse,
+            "/injective.exchange.v1beta1.MsgBatchCreateDerivativeLimitOrders": injective_exchange_tx_pb.MsgBatchCreateDerivativeLimitOrdersResponse,
+            "/injective.exchange.v1beta1.MsgBatchUpdateOrders": injective_exchange_tx_pb.MsgBatchUpdateOrdersResponse,
+            "/injective.exchange.v1beta1.MsgDeposit": injective_exchange_tx_pb.MsgDepositResponse,
+            "/injective.exchange.v1beta1.MsgWithdraw": injective_exchange_tx_pb.MsgWithdrawResponse,
+            "/injective.exchange.v1beta1.MsgSubaccountTransfer": injective_exchange_tx_pb.MsgSubaccountTransferResponse,
+            "/injective.exchange.v1beta1.MsgLiquidatePosition": injective_exchange_tx_pb.MsgLiquidatePositionResponse,
+            "/injective.exchange.v1beta1.MsgIncreasePositionMargin": injective_exchange_tx_pb.MsgIncreasePositionMarginResponse,
+            "/injective.auction.v1beta1.MsgBid": injective_auction_tx_pb.MsgBidResponse,
+            "/cosmos.bank.v1beta1.MsgSend": cosmos_bank_tx_pb.MsgSendResponse
         }
 
         response = tx_response_pb.TxResponseData.FromString(data)

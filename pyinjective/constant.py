@@ -121,5 +121,16 @@ class Network:
             env='mainnet'
         )
 
+    @classmethod
+    def mainnet_through_self_hosted_node(cls):
+        return cls(
+            lcd_endpoint="http://3.112.12.149",
+            grpc_endpoint="3.112.12.149:9900",
+            grpc_exchange_endpoint="3.112.12.149:9910",
+            chain_id='injective-1',
+            fee_denom='inj',
+            env='mainnet'
+        )
+
     def string(self):
         return self.env

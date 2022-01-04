@@ -124,7 +124,7 @@ class Network:
     @classmethod
     def mainnet_through_self_hosted_node(cls):
         return cls(
-            lcd_endpoint="http://172.31.42.171",
+            lcd_endpoint="http://172.31.42.171:10337",
             grpc_endpoint="172.31.42.171:9900",
             grpc_exchange_endpoint="172.31.42.171:9910",
             chain_id='injective-1',

@@ -50,6 +50,8 @@ class Denom:
     def load_peggy_denom(cls, network, symbol):
         if network == 'devnet':
             config = devnet_config
+        elif network == 'local':
+            config = devnet_config
         elif network == 'testnet':
             config = testnet_config
         else:
@@ -107,7 +109,8 @@ class Network:
             'sentry1',  # us, prod
             'sentry2',  # us, staging
             'sentry3',  # tokyo, prod,
-            'sentry4'
+            'sentry4',
+            'sentry.cd' # dedicated github-runner
         ]
         if node not in nodes:
             raise ValueError("Must be one of {}".format(nodes))
@@ -119,6 +122,17 @@ class Network:
             chain_id='injective-1',
             fee_denom='inj',
             env='mainnet'
+        )
+
+    @classmethod
+    def local(cls):
+        return cls(
+            lcd_endpoint="localhost:10337",
+            grpc_endpoint="localhost:9900",
+            grpc_exchange_endpoint="localhost:9910",
+            chain_id='injective-1',
+            fee_denom='inj',
+            env='local'
         )
 
     @classmethod

@@ -110,10 +110,31 @@ class Network:
             'sentry2',  # us, staging
             'sentry3',  # tokyo, prod,
             'sentry4',
-            'sentry.cd' # dedicated github-runner
+            'sentry.cd',  # dedicated github-runner
+            'asymm_inner_node',
+            'asymm_outer_node',
+
         ]
         if node not in nodes:
             raise ValueError("Must be one of {}".format(nodes))
+        if node == 'asymm_inner_node':
+            return cls(
+                lcd_endpoint="http://172.31.37.139:10337",
+                grpc_endpoint="172.31.37.139:9900",
+                grpc_exchange_endpoint="172.31.37.139:9910",
+                chain_id='injective-1',
+                fee_denom='inj',
+                env='mainnet'
+            )
+        if node == 'asymm_outer_node':
+            return cls(
+                lcd_endpoint="http://18.183.209.52:10337",
+                grpc_endpoint="18.183.209.52:9900",
+                grpc_exchange_endpoint="18.183.209.52:9910",
+                chain_id='injective-1',
+                fee_denom='inj',
+                env='mainnet'
+            )
 
         return cls(
             lcd_endpoint="https://lcd.injective.network",
